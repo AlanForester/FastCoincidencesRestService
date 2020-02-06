@@ -1,0 +1,23 @@
+version: '2'
+services:
+  db:
+    build: ./db
+    volumes:
+      - ./db/pgdata:/pgdata
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=docker
+      - POSTGRES_PASSWORD=docker
+      - PGDATA=/pgdata
+  app:
+    build:
+      context: ./app
+      args:
+        app_env: ${APP_ENV}
+    volumes:
+      - ./app:/go/src/app
+    ports:
+      - "12345:8080"
+    links:
+      - db

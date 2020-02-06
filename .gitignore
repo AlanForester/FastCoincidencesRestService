@@ -1,0 +1,16 @@
+
+# postgres data
+db/pgdata
+
+# testing
+/coverage
+
+# production
+api/tmp
+
+# misc
+.DS_Store
+
+.idea
+
+go.sum
