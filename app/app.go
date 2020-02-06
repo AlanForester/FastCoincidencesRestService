@@ -2,6 +2,7 @@ package main
 
 import (
 	"app/mdl"
+	"app/scripts"
 	. "app/srv"
 	"context"
 	"encoding/json"
@@ -10,12 +11,24 @@ import (
 	"os"
 	"os/signal"
 	"time"
-	// "github.com/pilu/fresh"
 )
 
 var listenAddr = ":8080"
 
 func main() {
+
+	// Loading test data
+	if os.Getenv("APP_ENV") != "production" {
+		var countRecords int
+		var needRecords = 10000000
+		SQL().Find(&mdl.ConnLog{}).Count(&countRecords)
+		log.Printf("countRecords %d ", countRecords)
+		if countRecords < needRecords {
+			needRecords = needRecords - countRecords
+			scripts.LoadData(needRecords)
+		}
+	}
+
 	router := setupRouter()
 	RunServer(router)
 }
@@ -59,6 +72,8 @@ func RunServer(router *http.ServeMux) {
 
 	go func() {
 		<-quit
+		logger.Println("Database closing...")
+		_ = SQL().Close()
 		logger.Println("Server is shutting down...")
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()

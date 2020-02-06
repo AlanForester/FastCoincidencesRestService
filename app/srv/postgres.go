@@ -4,6 +4,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"log"
+	"time"
 )
 
 var sql *gorm.DB
@@ -14,7 +15,12 @@ func (s *Postgres) Connect() *gorm.DB {
 	dsn := "user=docker password=docker sslmode=disable host=db"
 	instance, err := gorm.Open("postgres", dsn)
 	if err != nil {
-		log.Panicf("Postgres Error: %+v", err)
+		log.Printf("Postgres Error: %+v", err)
+		if err.Error() == "pq: the database system is starting up" {
+			log.Printf("Sleep and reconnect to DB")
+			time.Sleep(5 * time.Second)
+			s.Connect()
+		}
 	}
 	return instance
 }
