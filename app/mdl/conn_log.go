@@ -38,6 +38,41 @@ func BulkCreateConnLogs(rs []ConnLog) error {
 	return nil
 }
 
+func Intersection(a, b []int64) (c []int64) {
+	m := make(map[int64]bool)
+
+	for _, item := range a {
+		m[item] = true
+	}
+
+	for _, item := range b {
+		if _, ok := m[item]; ok {
+			c = append(c, item)
+		}
+	}
+	return
+}
+
+func IntersectionSQL(a, b int64) (c []string) {
+	var firstUserIps []string
+	srv.SQL().Model(ConnLog{}).Select("ip_addr").Where("user_id = ?", a).Pluck("ip_addr", &firstUserIps)
+	var secondUserIps []string
+	srv.SQL().Model(ConnLog{}).Select("ip_addr").Where("user_id = ?", b).Pluck("ip_addr", &secondUserIps)
+
+	m := make(map[string]bool)
+
+	for _, item := range firstUserIps {
+		m[item] = true
+	}
+
+	for _, item := range secondUserIps {
+		if _, ok := m[item]; ok {
+			c = append(c, item)
+		}
+	}
+	return
+}
+
 func init() {
-	srv.SQL().AutoMigrate(&ConnLog{})
+	srv.SQL().AutoMigrate(&ConnLog{}).AddIndex("conn_logs_user_id_index", "user_id")
 }

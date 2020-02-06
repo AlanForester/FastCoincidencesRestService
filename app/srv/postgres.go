@@ -28,13 +28,12 @@ func (s *Postgres) Connect() *gorm.DB {
 func initDB() *gorm.DB {
 	conn := &Postgres{}
 	ormInstance := conn.Connect()
-	ormInstance.BlockGlobalUpdate(true)
-	ormInstance.Debug().LogMode(true)
+	ormInstance.BlockGlobalUpdate(false)
 
 	sqlInstance := ormInstance.DB()
 	sqlInstance.SetConnMaxLifetime(0)
 	log.Printf("Postgres is ready")
-	return ormInstance
+	return ormInstance.Debug()
 }
 
 func SQL() *gorm.DB {

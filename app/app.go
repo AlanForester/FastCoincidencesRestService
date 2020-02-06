@@ -10,24 +10,36 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"time"
 )
 
 var listenAddr = ":8080"
 
 func main() {
-
+	for SQL() == nil {
+		log.Printf("Initializing DB ")
+		time.Sleep(5 * time.Second)
+	}
 	// Loading test data
 	if os.Getenv("APP_ENV") != "production" {
 		var countRecords int
 		var needRecords = 10000000
-		SQL().Find(&mdl.ConnLog{}).Count(&countRecords)
-		log.Printf("countRecords %d ", countRecords)
-		if countRecords < needRecords {
-			needRecords = needRecords - countRecords
-			scripts.LoadData(needRecords)
+		SQL().Limit(1).Find(&mdl.ConnLog{}).Count(&countRecords)
+		if countRecords == 0 {
+			SQL().Find(&mdl.ConnLog{}).Count(&countRecords)
+			log.Printf("CountRecords %d ", countRecords)
+			if needRecords < countRecords {
+				needRecords = needRecords - countRecords
+				scripts.LoadData(needRecords)
+			}
+		} else {
+			log.Printf("DB in not empty - OK")
 		}
 	}
+
+	//mdl.LoadDuplicates()
 
 	router := setupRouter()
 	RunServer(router)
@@ -35,8 +47,7 @@ func main() {
 
 func setupRouter() *http.ServeMux {
 	router := http.NewServeMux()
-	router.HandleFunc("/", notFound)
-	router.HandleFunc("/1", handleDups)
+	router.HandleFunc("/", handleDups)
 	return router
 }
 
@@ -102,12 +113,39 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 func handleDups(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	var logs []*mdl.ConnLog
-	SQL().Find(&logs)
+	//var logs []*mdl.ConnLog
+	log.Printf("%v", r.URL.Path)
+	params := strings.Split(r.URL.Path, "/")
+	if len(params) == 3 {
+		user1, user2 := 0, 0
+		if user1t, err := strconv.Atoi(params[1]); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			user1 = user1t
+		}
+		if user2t, err := strconv.Atoi(params[2]); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			user2 = user2t
+		}
+		resp := mdl.IntersectionSQL(int64(user1), int64(user2))
 
-	if json.NewEncoder(w).Encode(logs) != nil {
-		w.WriteHeader(http.StatusBadGateway)
+		httpResp := false
+		if len(resp) > 1 {
+			httpResp = true
+		}
+		if json.NewEncoder(w).Encode(map[string]bool{"dupes": httpResp}) != nil {
+			w.WriteHeader(http.StatusBadGateway)
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
 	}
+
+	//user1 := r.URL.Query().Get(":id1")
+	//user2 := r.URL.Query().Get(":id2")
+	//if json.NewEncoder(w).Encode(user1,user2) != nil {
+	//	w.WriteHeader(http.StatusBadGateway)
+	//}
 	//if json.NewEncoder(w).Encode(map[string]bool{"dupes": false}) != nil {
 	//	w.WriteHeader(http.StatusBadGateway)
 	//}
